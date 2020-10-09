@@ -1,8 +1,8 @@
 # AWS Region Finder
 
-AWS resource's region lookup by its public IP address.
+## What is it
 
-API service was built on a [Cloudflare Workers](https://workers.cloudflare.com) serverless platform.
+AWS resource's region lookup by its public IP address.
 
 ## How does it work
 
@@ -50,3 +50,7 @@ curl "https://aws.home-cloud.workers.dev/?ip=52.1.1.1"
   ]
 }
 ```
+
+___
+
+API service was built on a [Cloudflare Workers](https://workers.cloudflare.com) serverless platform
