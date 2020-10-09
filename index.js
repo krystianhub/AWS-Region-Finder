@@ -1,6 +1,10 @@
 import ipRangeCheck from "ip-range-check";
 
 const RANGES_ENDPOINT = 'https://ip-ranges.amazonaws.com/ip-ranges.json';
+const RESPONSE_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET",
+};
 
 var prefixes = undefined;
 
@@ -42,5 +46,5 @@ async function handleRequest(request) {
     "matches": matches,
   };
 
-  return new Response(JSON.stringify(responseJSON, null, 2));
+  return new Response(JSON.stringify(responseJSON, null, 2), { headers: RESPONSE_HEADERS });
 }
