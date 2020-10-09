@@ -19,7 +19,7 @@ async function handleRequest(request) {
   const aws_lookup = params.get('ip');
 
   if (!aws_lookup) {
-    return new Response('ip param is empty!', { status: 400 })
+    return new Response('ip param is empty!', { status: 400, headers: CORS_HEADERS })
   }
 
   let cache_status = 'local';
