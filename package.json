@@ -12,6 +12,7 @@
     "prettier": "^1.18.2"
   },
   "dependencies": {
-    "ip-range-check": "^0.2.0"
+    "netmask": "^1.0.6",
+    "validator": "^13.1.17"
   }
 }

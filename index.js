@@ -1,4 +1,5 @@
-import ipRangeCheck from "ip-range-check";
+import { Netmask } from 'netmask';
+import isIP from 'validator/lib/isIP';
 
 const RANGES_ENDPOINT = 'https://ip-ranges.amazonaws.com/ip-ranges.json';
 const CORS_HEADERS = {
@@ -19,7 +20,11 @@ async function handleRequest(request) {
   const aws_lookup = params.get('ip');
 
   if (!aws_lookup) {
-    return new Response('ip param is empty!', { status: 400, headers: CORS_HEADERS })
+    return new Response('"ip" parameter is empty!', { status: 400, headers: CORS_HEADERS })
+  }
+
+  if (!isIP(aws_lookup)) {
+    return new Response('"ip" parameter is not a valid IP address!', { status: 400, headers: CORS_HEADERS })
   }
 
   let cache_status = 'local';
@@ -36,10 +41,10 @@ async function handleRequest(request) {
     }
 
     const ranges_json = await aws_rangers_response.json();
-    prefixes = ranges_json.prefixes;
+    prefixes = ranges_json.prefixes.map(metadata => { return { metadata: metadata, matcher: new Netmask(metadata.ip_prefix) } });
   }
 
-  const matches = prefixes.filter(range => ipRangeCheck(aws_lookup, range.ip_prefix));
+  const matches = prefixes.filter(block => block.matcher.contains(aws_lookup)).map(block => block.metadata);
 
   const responseJSON = {
     "requested_ip": aws_lookup,
