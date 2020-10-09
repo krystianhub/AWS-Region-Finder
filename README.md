@@ -18,7 +18,13 @@ Additionally, there is a field called **"requested_ip"** which is simply echoing
 
 **"cache_status"** is simply an information about its cached CIDR datastore (**ip-ranges.json** file). Values can be either **"local"** _(meaning it is stored in RAM)_, or **"cf_miss"** / **"cf_hit"** - both correspond to the [Cloudflare's "CF-Cache-Status" mechanics](https://support.cloudflare.com/hc/en-us/articles/200172516-Understanding-Cloudflare-s-CDN).
 
-## Example
+## Web UI
+
+Web UI is available [here](https://aws-ui.home-cloud.workers.dev)
+
+[![Screenshot of the Web UI's example results](./assets/web_ui.png)](https://aws-ui.home-cloud.workers.dev)
+
+## cURL example
 
 ```bash
 curl "https://aws.home-cloud.workers.dev/?ip=52.1.1.1"
