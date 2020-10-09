@@ -1,0 +1,6 @@
+account_id = "[your_account_id]"
+name = "aws"
+route = ""
+type = "webpack"
+workers_dev = true
+zone_id = ""

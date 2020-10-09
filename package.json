@@ -1,0 +1,17 @@
+{
+  "private": true,
+  "name": "aws-region-finder",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "format": "prettier --write '**/*.{js,css,json,md}'"
+  },
+  "author": "krystianhub",
+  "devDependencies": {
+    "prettier": "^1.18.2"
+  },
+  "dependencies": {
+    "ip-range-check": "^0.2.0"
+  }
+}
