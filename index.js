@@ -1,6 +1,7 @@
 import { Netmask } from 'netmask';
 import isIP from 'validator/lib/isIP';
 
+const CF_CACHE_STATUS_HEADER = 'cf-cache-status';
 const RANGES_ENDPOINT = 'https://ip-ranges.amazonaws.com/ip-ranges.json';
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -27,17 +28,15 @@ async function handleRequest(request) {
     return new Response('"ip" parameter is not a valid IP address!', { status: 400, headers: CORS_HEADERS })
   }
 
-  let cache_status = 'local';
+  let cache_status = 'LOCAL';
 
   if (prefixes == undefined) {
-    const cache = caches.default;
-    let aws_rangers_response = await cache.match(RANGES_ENDPOINT);
+    let aws_rangers_response = await fetch(RANGES_ENDPOINT, { cf: { cacheEverything: true, cacheTtl: 3600 } });
 
-    if (!aws_rangers_response) {
-      cache_status = 'cf_miss';
-      aws_rangers_response = await fetch(RANGES_ENDPOINT, { cf: { cacheEverything: true, cacheTtl: 3600 } });
+    if (aws_rangers_response.headers.has(CF_CACHE_STATUS_HEADER)) {
+      cache_status = aws_rangers_response.headers.get(CF_CACHE_STATUS_HEADER);
     } else {
-      cache_status = 'cf_hit';
+      cache_status = 'N/A';
     }
 
     const ranges_json = await aws_rangers_response.json();

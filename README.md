@@ -16,7 +16,7 @@ In response you will get a set of **matches** (if it is a valid AWS IP address),
 
 Additionally, there is a field called **"requested_ip"** which is simply echoing the IP address you are trying to look up.
 
-**"cache_status"** reports its status about cached CIDR datastore. Values can be either **"local"** _(meaning it is stored in RAM memory)_, or **"cf_miss"** / **"cf_hit"** - both correspond to the [Cloudflare's "CF-Cache-Status" mechanics](https://support.cloudflare.com/hc/en-us/articles/200172516-Understanding-Cloudflare-s-CDN).
+**"cache_status"** reports its status about cached CIDR datastore. Values can be either **"LOCAL"** _(meaning it is stored in RAM memory)_, or a value of **"cf-cache-status"** header _(you can read more about [Cloudflare's "CF-Cache-Status" mechanics](https://support.cloudflare.com/hc/en-us/articles/200172516-Understanding-Cloudflare-s-CDN))_.
 
 ## Web UI
 
