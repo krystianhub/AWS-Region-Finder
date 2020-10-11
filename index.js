@@ -1,5 +1,4 @@
-import { Netmask } from 'netmask';
-import isIP from 'validator/lib/isIP';
+import { isInSubnet, isIP, isIPv4 } from 'is-in-subnet';
 
 const CF_CACHE_STATUS_HEADER = 'cf-cache-status';
 const RANGES_ENDPOINT = 'https://ip-ranges.amazonaws.com/ip-ranges.json';
@@ -9,7 +8,8 @@ const CORS_HEADERS = {
   "Access-Control-Max-Age": "86400",
 };
 
-var prefixes = undefined;
+var ipv4_prefixes = undefined;
+var ipv6_prefixes = undefined;
 
 addEventListener('fetch', event => {
   event.respondWith(handleRequest(event.request));
@@ -18,19 +18,19 @@ addEventListener('fetch', event => {
 async function handleRequest(request) {
   const req_url = new URL(request.url);
   const params = req_url.searchParams;
-  const aws_lookup = params.get('ip');
+  const ip_lookup = params.get('ip');
 
-  if (!aws_lookup) {
+  if (!ip_lookup) {
     return new Response('"ip" parameter is empty!', { status: 400, headers: CORS_HEADERS })
   }
 
-  if (!isIP(aws_lookup)) {
+  if (!isIP(ip_lookup)) {
     return new Response('"ip" parameter is not a valid IP address!', { status: 400, headers: CORS_HEADERS })
   }
 
   let cache_status = 'LOCAL';
 
-  if (prefixes == undefined) {
+  if (ipv4_prefixes == undefined || ipv6_prefixes == undefined) {
     let aws_rangers_response = await fetch(RANGES_ENDPOINT, { cf: { cacheEverything: true, cacheTtl: 3600 } });
 
     if (aws_rangers_response.headers.has(CF_CACHE_STATUS_HEADER)) {
@@ -40,13 +40,20 @@ async function handleRequest(request) {
     }
 
     const ranges_json = await aws_rangers_response.json();
-    prefixes = ranges_json.prefixes.map(metadata => { return { metadata: metadata, matcher: new Netmask(metadata.ip_prefix) } });
+    ipv4_prefixes = ranges_json.prefixes;
+    ipv6_prefixes = ranges_json.ipv6_prefixes;
   }
 
-  const matches = prefixes.filter(block => block.matcher.contains(aws_lookup)).map(block => block.metadata);
+  let matches;
+
+  if (isIPv4(ip_lookup)) {
+    matches = ipv4_prefixes.filter(block => isInSubnet(ip_lookup, block.ip_prefix));
+  } else {
+    matches = ipv6_prefixes.filter(block => isInSubnet(ip_lookup, block.ipv6_prefix));
+  }
 
   const responseJSON = {
-    "requested_ip": aws_lookup,
+    "requested_ip": ip_lookup,
     "cache_status": cache_status,
     "matches": matches,
   };

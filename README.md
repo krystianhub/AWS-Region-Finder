@@ -2,7 +2,7 @@
 
 ## What is it
 
-AWS resource's region lookup by its public IP address.
+AWS resource's region lookup by its public IPv4 or IPv6 address.
 
 ## How does it work
 
