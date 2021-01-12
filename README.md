@@ -53,4 +53,4 @@ curl "https://aws.home-cloud.workers.dev/?ip=52.1.1.1"
 
 ---
 
-API service was built on a [Cloudflare Workers](https://workers.cloudflare.com) serverless platform
+API service was built on [Cloudflare Workers](https://workers.cloudflare.com) serverless platform
