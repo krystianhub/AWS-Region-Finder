@@ -20,9 +20,9 @@ Additionally, there is a field called **"requested_ip"** which is simply echoing
 
 ## Web UI
 
-Web UI is available [here](https://aws-ui.home-cloud.workers.dev)
+Web UI is available [here](https://aws-region-finder.pages.dev/)
 
-[![Screenshot of the Web UI's example results](./assets/web_ui.png)](https://aws-ui.home-cloud.workers.dev)
+[![Screenshot of the Web UI's example results](./assets/web_ui.png)](https://aws-region-finder.pages.dev)
 
 ## cURL example
 
