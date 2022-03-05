@@ -9,7 +9,7 @@
   },
   "author": "krystianhub",
   "devDependencies": {
-    "prettier": "^2.2.1"
+    "prettier": "^2.5.1"
   },
   "dependencies": {
     "is-in-subnet": "^4.0.1"
