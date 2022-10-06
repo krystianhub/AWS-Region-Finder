@@ -1,8 +1,7 @@
-account_id = "[your-account-id]"
-name = "[your-app-name]"
+name = "aws-wasm"
 workers_dev = true
 
-compatibility_date = "2022-10-04"
+compatibility_date = "2022-10-05"
 main = "build/worker/shim.mjs"
 
 [vars]
