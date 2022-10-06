@@ -31,4 +31,5 @@ jobs:
       - name: Publish
         run: npm i wrangler && npx wrangler publish
         env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
