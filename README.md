@@ -27,13 +27,13 @@ Web UI is available [here](https://aws-region-finder.pages.dev/)
 ## cURL example
 
 ```bash
-curl "https://aws.home-cloud.workers.dev/?ip=52.1.1.1"
+curl "https://aws-wasm.home-cloud.workers.dev/?ip=52.1.1.1"
 ```
 
 ```json
 {
   "requested_ip": "52.1.1.1",
-  "cache_status": "local",
+  "cache_status": "LOCAL",
   "matches": [
     {
       "ip_prefix": "52.0.0.0/15",

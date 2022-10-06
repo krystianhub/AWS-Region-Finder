@@ -1,6 +1,12 @@
-account_id = "[your_account_id]"
-name = "aws"
-route = ""
-type = "webpack"
+account_id = "[your-account-id]"
+name = "[your-app-name]"
 workers_dev = true
-zone_id = ""
+
+compatibility_date = "2022-10-04"
+main = "build/worker/shim.mjs"
+
+[vars]
+WORKERS_RS_VERSION = "0.0.11"
+
+[build]
+command = "cargo install worker-build && worker-build --release"
