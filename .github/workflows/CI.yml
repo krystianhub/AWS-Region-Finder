@@ -22,7 +22,7 @@ jobs:
           toolchain: stable
 
       - name: ⚡Rust Cache
-        uses: Swatinem/rust-cache@v1
+        uses: Swatinem/rust-cache@v2
 
       - uses: actions/setup-node@v3
         with:
