@@ -1,6 +1,6 @@
 use std::{
     borrow::Cow,
-    net::IpAddr,
+    net::{IpAddr, Ipv4Addr, Ipv6Addr},
     sync::{Arc, RwLock},
 };
 
@@ -102,34 +102,19 @@ pub async fn fetch_aws_ranges() -> Result<(Arc<AWSResponse>, bool)> {
 
         let fetch_request = Request::new_with_init(AWS_RANGE_URL, &fetch_options)?;
         let mut fetch_request = Fetch::Request(fetch_request).send().await?;
-        let mut ranges: AWSIpRanges = fetch_request.json().await?;
-
-        // Compute all ranges
-        ranges.prefixes.iter_mut().for_each(|range| {
-            range.ipv4_prefix_compute = [range.ip_prefix.parse::<Ipv4Net>().unwrap()]
-                .into_iter()
-                .collect();
-        });
-        ranges.ipv6_prefixes.iter_mut().for_each(|range| {
-            range.ipv6_prefix_compute = [range.ipv6_prefix.parse::<Ipv6Net>().unwrap()]
-                .into_iter()
-                .collect();
-        });
+        let ranges: AWSIpRanges = fetch_request.json().await?;
 
         let response_headers = fetch_request.headers();
         let cf_header = response_headers.get(CF_CACHE_STATUS_HEADER)?;
+        let cf_cache_status = cf_header.unwrap_or_else(|| "UNKNOWN".to_owned());
 
-        let aws_response = AWSResponse {
-            ranges,
-            cf_cache_status: cf_header.unwrap_or_else(|| "UNKNOWN".to_owned()),
-        };
-
-        let aws_resp = Arc::new(aws_response);
+        let aws_response = calculate_aws_response(ranges, cf_cache_status);
+        let aws_response = Arc::new(aws_response);
 
         let mut write_lock = AWS_RESPONSE.write().unwrap();
-        write_lock.replace(Arc::clone(&aws_resp));
+        write_lock.replace(Arc::clone(&aws_response));
 
-        aws_response_storage.replace(aws_resp);
+        aws_response_storage.replace(aws_response);
     }
 
     let aws_response_storage = aws_response_storage.unwrap();
@@ -162,18 +147,23 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
 
             let ip_param = match ip_param {
                 Some(ip_param) => ip_param,
-                None => return Response::error(r#""ip" parameter is missing!"#, 400)?.with_cors(&CORS_HEADERS),
+                None => {
+                    return Response::error(r#""ip" parameter is missing!"#, 400)?
+                        .with_cors(&CORS_HEADERS)
+                }
             };
 
             if ip_param.is_empty() {
-                return Response::error(r#""ip" parameter is empty!"#, 400)?.with_cors(&CORS_HEADERS);
+                return Response::error(r#""ip" parameter is empty!"#, 400)?
+                    .with_cors(&CORS_HEADERS);
             }
 
             let ip_address = match ip_param.parse::<IpAddr>() {
                 Ok(ip_param) => ip_param,
                 Err(err) => {
                     console_error!("IP parameter is not valid: {:?}", err);
-                    return Response::error(r#""ip" parameter is not a valid IP address!"#, 400)?.with_cors(&CORS_HEADERS);
+                    return Response::error(r#""ip" parameter is not a valid IP address!"#, 400)?
+                        .with_cors(&CORS_HEADERS);
                 }
             };
 
@@ -181,7 +171,8 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
                 Ok(aws_response) => aws_response,
                 Err(err) => {
                     console_error!("Unable to fetch AWS ranges: {:?}", err);
-                    return Response::error("Unable to fetch AWS ranges", 500)?.with_cors(&CORS_HEADERS);
+                    return Response::error("Unable to fetch AWS ranges", 500)?
+                        .with_cors(&CORS_HEADERS);
                 }
             };
 
@@ -192,32 +183,7 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
             };
 
             // Check if we have matches against ip_address value
-            let matches = match ip_address {
-                IpAddr::V4(ipv4) => aws_response
-                    .ranges
-                    .prefixes
-                    .iter()
-                    .filter(|x| x.ipv4_prefix_compute.contains(&ipv4))
-                    .map(|x| APIMatch {
-                        ip_prefix: &x.ip_prefix,
-                        region: &x.region,
-                        service: &x.service,
-                        network_border_group: &x.network_border_group,
-                    })
-                    .collect::<Vec<_>>(),
-                IpAddr::V6(ipv6) => aws_response
-                    .ranges
-                    .ipv6_prefixes
-                    .iter()
-                    .filter(|x| x.ipv6_prefix_compute.contains(&ipv6))
-                    .map(|x| APIMatch {
-                        ip_prefix: &x.ipv6_prefix,
-                        region: &x.region,
-                        service: &x.service,
-                        network_border_group: &x.network_border_group,
-                    })
-                    .collect::<Vec<_>>(),
-            };
+            let matches = ip_match(&aws_response.ranges, &ip_address);
 
             let api_response = APIResponse {
                 requested_ip: &ip_param,
@@ -241,4 +207,99 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
         })
         .run(req, env)
         .await
+}
+
+fn calculate_aws_response(mut ranges: AWSIpRanges, cf_cache_status: String) -> AWSResponse {
+    // Compute all ranges
+    ranges.prefixes.iter_mut().for_each(|range| {
+        range.ipv4_prefix_compute = [range.ip_prefix.parse::<Ipv4Net>().unwrap()]
+            .into_iter()
+            .collect();
+    });
+    ranges.ipv6_prefixes.iter_mut().for_each(|range| {
+        range.ipv6_prefix_compute = [range.ipv6_prefix.parse::<Ipv6Net>().unwrap()]
+            .into_iter()
+            .collect();
+    });
+
+    AWSResponse {
+        ranges,
+        cf_cache_status,
+    }
+}
+
+fn ip_match<'a>(aws_ranges: &'a AWSIpRanges, ip_address: &'a IpAddr) -> Vec<APIMatch<'a>> {
+    match ip_address {
+        IpAddr::V4(ipv4) => ipv4_match(&aws_ranges.prefixes, ipv4),
+        IpAddr::V6(ipv6) => ipv6_match(&aws_ranges.ipv6_prefixes, ipv6),
+    }
+}
+
+fn ipv4_match<'a>(aws_ranges: &'a [Ipv4Prefix], ip_address: &'a Ipv4Addr) -> Vec<APIMatch<'a>> {
+    aws_ranges
+        .iter()
+        .filter(|x| x.ipv4_prefix_compute.contains(ip_address))
+        .map(|x| APIMatch {
+            ip_prefix: &x.ip_prefix,
+            region: &x.region,
+            service: &x.service,
+            network_border_group: &x.network_border_group,
+        })
+        .collect::<Vec<_>>()
+}
+
+fn ipv6_match<'a>(aws_ranges: &'a [Ipv6Prefix], ip_address: &'a Ipv6Addr) -> Vec<APIMatch<'a>> {
+    aws_ranges
+        .iter()
+        .filter(|x| x.ipv6_prefix_compute.contains(ip_address))
+        .map(|x| APIMatch {
+            ip_prefix: &x.ipv6_prefix,
+            region: &x.region,
+            service: &x.service,
+            network_border_group: &x.network_border_group,
+        })
+        .collect::<Vec<_>>()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn init_aws_response() -> AWSResponse {
+        let test_aws_ranges = include_str!("../test_data/example_ip-ranges.json");
+        let ranges: AWSIpRanges =
+            serde_json::from_str(test_aws_ranges).expect("JSON deserialization error");
+
+        calculate_aws_response(ranges, "TEST".to_owned())
+    }
+
+    #[test]
+    fn test_ipv4_matching() {
+        let aws_response = init_aws_response();
+
+        // Match expected
+        let ip_address: IpAddr = "52.1.1.1".parse().unwrap();
+        let result_ranges = ip_match(&aws_response.ranges, &ip_address);
+        assert!(!result_ranges.is_empty());
+
+        // Match not expected
+        let ip_address: IpAddr = "8.8.8.8".parse().unwrap();
+        let result_ranges = ip_match(&aws_response.ranges, &ip_address);
+        assert!(result_ranges.is_empty());
+    }
+
+    #[test]
+    fn test_ipv6_matching() {
+        let aws_response = init_aws_response();
+
+        // Match expected
+        let ip_address: IpAddr = "2406:da60:c000::00".parse().unwrap();
+        let result_ranges = ip_match(&aws_response.ranges, &ip_address);
+        assert!(!result_ranges.is_empty());
+
+        // Match not expected
+        let ip_address: IpAddr = "2206:de60:c000::00".parse().unwrap();
+        let result_ranges = ip_match(&aws_response.ranges, &ip_address);
+        assert!(result_ranges.is_empty());
+    }
 }

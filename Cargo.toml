@@ -1,7 +1,7 @@
 [package]
 edition = "2021"
 name = "aws-region-finder-wasm"
-version = "0.2.1"
+version = "0.2.2"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -10,7 +10,7 @@ crate-type = ["cdylib", "rlib"]
 cfg-if = "1"
 worker = "0.0.12"
 
-ipnet = "2.5"
+ipnet = "2.6"
 iprange = "0.6"
 lazy_static = "1.4"
 serde = {version = "1", features = ["derive"]}

@@ -28,6 +28,9 @@ jobs:
         with:
           node-version: lts/*
 
+      - name: Run unit tests
+        run: cargo test_linux
+
       - name: Publish
         run: npm i wrangler && npx wrangler publish
         env:
