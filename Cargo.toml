@@ -1,14 +1,14 @@
 [package]
 edition = "2021"
 name = "aws-region-finder-wasm"
-version = "0.2.3"
+version = "0.2.4"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 cfg-if = "1"
-worker = "0.0.12"
+worker = "0.0.14"
 
 ipnet = "2.7"
 iprange = "0.6"
