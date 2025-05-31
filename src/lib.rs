@@ -122,16 +122,66 @@ pub async fn fetch_aws_ranges() -> Result<(Arc<AWSResponse>, bool)> {
     Ok((aws_response_storage, is_local))
 }
 
+fn calculate_aws_response(mut ranges: AWSIpRanges, cf_cache_status: String) -> AWSResponse {
+    // Compute all ranges
+    ranges.prefixes.iter_mut().for_each(|range| {
+        range.ipv4_prefix_compute = [range.ip_prefix.parse::<Ipv4Net>().unwrap()]
+            .into_iter()
+            .collect();
+    });
+    ranges.ipv6_prefixes.iter_mut().for_each(|range| {
+        range.ipv6_prefix_compute = [range.ipv6_prefix.parse::<Ipv6Net>().unwrap()]
+            .into_iter()
+            .collect();
+    });
+
+    AWSResponse {
+        ranges,
+        cf_cache_status,
+    }
+}
+
+fn ip_match<'a>(aws_ranges: &'a AWSIpRanges, ip_address: &'a IpAddr) -> Vec<APIMatch<'a>> {
+    match ip_address {
+        IpAddr::V4(ipv4) => ipv4_match(&aws_ranges.prefixes, ipv4),
+        IpAddr::V6(ipv6) => ipv6_match(&aws_ranges.ipv6_prefixes, ipv6),
+    }
+}
+
+fn ipv4_match<'a>(aws_ranges: &'a [Ipv4Prefix], ip_address: &'a Ipv4Addr) -> Vec<APIMatch<'a>> {
+    aws_ranges
+        .iter()
+        .filter(|x| x.ipv4_prefix_compute.contains(ip_address))
+        .map(|x| APIMatch {
+            ip_prefix: &x.ip_prefix,
+            region: &x.region,
+            service: &x.service,
+            network_border_group: &x.network_border_group,
+        })
+        .collect::<Vec<_>>()
+}
+
+fn ipv6_match<'a>(aws_ranges: &'a [Ipv6Prefix], ip_address: &'a Ipv6Addr) -> Vec<APIMatch<'a>> {
+    aws_ranges
+        .iter()
+        .filter(|x| x.ipv6_prefix_compute.contains(ip_address))
+        .map(|x| APIMatch {
+            ip_prefix: &x.ipv6_prefix,
+            region: &x.region,
+            service: &x.service,
+            network_border_group: &x.network_border_group,
+        })
+        .collect::<Vec<_>>()
+}
+
+// Main event handler for the Worker
+
 #[event(fetch)]
 pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Response> {
-    // Optionally, use the Router to handle matching endpoints, use ":name" placeholders, or "*name"
-    // catch-alls to match on specific patterns. Alternatively, use `Router::with_data(D)` to
-    // provide arbitrary data that will be accessible in each route via the `ctx.data()` method.
+    console_error_panic_hook::set_once();
+
     let router = Router::with_data(INSTANCE_ID.as_str());
 
-    // Add as many routes as your Worker needs! Each route will get a `Request` for handling HTTP
-    // functionality and a `RouteContext` which you can use to  and get route parameters and
-    // Environment bindings like KV Stores, Durable Objects, Secrets, and Variables.
     router
         .get_async("/", |req, _| async move {
             let request_url = match req.url() {
@@ -207,58 +257,6 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
         })
         .run(req, env)
         .await
-}
-
-fn calculate_aws_response(mut ranges: AWSIpRanges, cf_cache_status: String) -> AWSResponse {
-    // Compute all ranges
-    ranges.prefixes.iter_mut().for_each(|range| {
-        range.ipv4_prefix_compute = [range.ip_prefix.parse::<Ipv4Net>().unwrap()]
-            .into_iter()
-            .collect();
-    });
-    ranges.ipv6_prefixes.iter_mut().for_each(|range| {
-        range.ipv6_prefix_compute = [range.ipv6_prefix.parse::<Ipv6Net>().unwrap()]
-            .into_iter()
-            .collect();
-    });
-
-    AWSResponse {
-        ranges,
-        cf_cache_status,
-    }
-}
-
-fn ip_match<'a>(aws_ranges: &'a AWSIpRanges, ip_address: &'a IpAddr) -> Vec<APIMatch<'a>> {
-    match ip_address {
-        IpAddr::V4(ipv4) => ipv4_match(&aws_ranges.prefixes, ipv4),
-        IpAddr::V6(ipv6) => ipv6_match(&aws_ranges.ipv6_prefixes, ipv6),
-    }
-}
-
-fn ipv4_match<'a>(aws_ranges: &'a [Ipv4Prefix], ip_address: &'a Ipv4Addr) -> Vec<APIMatch<'a>> {
-    aws_ranges
-        .iter()
-        .filter(|x| x.ipv4_prefix_compute.contains(ip_address))
-        .map(|x| APIMatch {
-            ip_prefix: &x.ip_prefix,
-            region: &x.region,
-            service: &x.service,
-            network_border_group: &x.network_border_group,
-        })
-        .collect::<Vec<_>>()
-}
-
-fn ipv6_match<'a>(aws_ranges: &'a [Ipv6Prefix], ip_address: &'a Ipv6Addr) -> Vec<APIMatch<'a>> {
-    aws_ranges
-        .iter()
-        .filter(|x| x.ipv6_prefix_compute.contains(ip_address))
-        .map(|x| APIMatch {
-            ip_prefix: &x.ipv6_prefix,
-            region: &x.region,
-            service: &x.service,
-            network_border_group: &x.network_border_group,
-        })
-        .collect::<Vec<_>>()
 }
 
 #[cfg(test)]
