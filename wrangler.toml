@@ -2,10 +2,10 @@ name = "aws-wasm"
 workers_dev = true
 
 main = "build/worker/shim.mjs"
-compatibility_date = "2025-05-31"
+compatibility_date = "2026-03-02"
 
 [vars]
-WORKERS_RS_VERSION = "0.5.0"
+WORKERS_RS_VERSION = "0.7.5"
 
 [build]
 command = "cargo install -q worker-build && worker-build --release"
